@@ -30,7 +30,7 @@ jobs:
         id: notes
         run: |
           TAG=${GITHUB_REF#refs/tags/}
-          PREV_TAG=$(git tag --sort=-v:refname | grep -A1 "^${TAG}$" | tail -1)
+          PREV_TAG=$(git tag --sort=-v:refname | grep -F -x -A1 -- "$TAG" | tail -1 || true)
           if [ -z "$PREV_TAG" ] || [ "$PREV_TAG" = "$TAG" ]; then
             echo "body=Initial release" >> "$GITHUB_OUTPUT"
           else
