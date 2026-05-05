@@ -1,4 +1,7 @@
+version: "2"
+
 linters:
+  default: none
   enable:
     - errcheck
     - govet
@@ -7,11 +10,11 @@ linters:
     - gosimple
     - ineffassign
     - typecheck
+
+formatters:
+  enable:
     - gofmt
     - goimports
 
 run:
   timeout: 5m
-
-issues:
-  exclude-use-default: false
