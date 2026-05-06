@@ -72,14 +72,16 @@ func (h *EventHandler) OnError(callbacks ...ErrorEventHandleFunc) {
 func (h *EventHandler) HandleEventRequest(r *http.Request) error {
 	ctx := r.Context()
 
-	// Start observers
+	// Start observers, propagating context through each
 	ends := make([]func(EventType, string, any, error), 0, len(h.observers))
 	for _, obs := range h.observers {
 		var end func(EventType, string, any, error)
 		ctx, end = obs.ObserveRequest(ctx, r)
-		ends = append(ends, end)
+		if end != nil {
+			ends = append(ends, end)
+		}
+		r = r.WithContext(ctx)
 	}
-	r = r.WithContext(ctx)
 
 	// Process request
 	eventType, deliveryID, event, err := h.processRequest(r)
@@ -93,13 +95,19 @@ func (h *EventHandler) HandleEventRequest(r *http.Request) error {
 
 // processRequest contains the core auth → parse → dispatch logic.
 func (h *EventHandler) processRequest(r *http.Request) (EventType, string, any, error) {
+	// Extract deliveryID early so observers always get it, even on auth/parse failures.
+	deliveryID := r.Header.Get(headerActivityID)
+
 	if h.username != "" || h.password != "" {
 		if err := validateBasicAuth(r, h.username, h.password); err != nil {
-			return "", "", nil, err
+			return "", deliveryID, nil, err
 		}
 	}
 
-	event, deliveryID, err := parse(r)
+	event, parsedDeliveryID, err := parse(r)
+	if parsedDeliveryID != "" {
+		deliveryID = parsedDeliveryID
+	}
 	if err != nil {
 		return "", deliveryID, nil, err
 	}

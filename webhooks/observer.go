@@ -15,8 +15,13 @@ type RequestObserver interface {
 }
 
 // WithRequestObserver registers observers for the request lifecycle.
+// Nil observers are silently ignored.
 func WithRequestObserver(obs ...RequestObserver) Option {
 	return func(h *EventHandler) {
-		h.observers = append(h.observers, obs...)
+		for _, o := range obs {
+			if o != nil {
+				h.observers = append(h.observers, o)
+			}
+		}
 	}
 }
