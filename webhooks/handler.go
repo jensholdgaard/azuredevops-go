@@ -2,6 +2,7 @@ package webhooks
 
 import (
 	"context"
+	"errors"
 	"net/http"
 )
 
@@ -29,7 +30,8 @@ type EventHandler struct {
 	observers []RequestObserver
 
 	// Event handlers
-	onGitPush []GitPushEventHandleFunc
+	onGitPush        []GitPushEventHandleFunc
+	onGitPullRequest []GitPullRequestEventHandleFunc
 }
 
 // Option configures an EventHandler.
@@ -113,19 +115,46 @@ func (h *EventHandler) processRequest(r *http.Request) (EventType, string, any, 
 	}
 
 	var eventType EventType
-	switch event.(type) {
+	switch e := event.(type) {
 	case *GitPushEvent:
 		eventType = EventTypeGitPush
+	case *GitPullRequestEvent:
+		eventType = e.EventType
 	}
 
-	return eventType, deliveryID, event, h.dispatch(r.Context(), deliveryID, event)
+	return eventType, deliveryID, event, h.dispatch(r.Context(), deliveryID, eventType, event)
 }
 
-// dispatch routes the parsed event to the appropriate typed handler.
-func (h *EventHandler) dispatch(ctx context.Context, deliveryID string, event any) error {
+// ServeHTTP implements http.Handler, allowing EventHandler to be mounted directly.
+// Returns 200 on success, 400 on client errors (bad payload, auth failure),
+// and 500 on handler errors.
+func (h *EventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if err := h.HandleEventRequest(r); err != nil {
+		switch {
+		case isClientError(err):
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		default:
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+func isClientError(err error) bool {
+	return errors.Is(err, ErrInvalidHTTPMethod) ||
+		errors.Is(err, ErrParsingPayload) ||
+		errors.Is(err, ErrEmptyBody) ||
+		errors.Is(err, ErrUnknownEventType) ||
+		errors.Is(err, ErrBasicAuthMissing) ||
+		errors.Is(err, ErrBasicAuthFailed)
+}
+func (h *EventHandler) dispatch(ctx context.Context, deliveryID string, eventType EventType, event any) error {
 	switch e := event.(type) {
 	case *GitPushEvent:
 		return h.dispatchGitPush(ctx, deliveryID, e)
+	case *GitPullRequestEvent:
+		return h.dispatchGitPullRequest(ctx, deliveryID, eventType, e)
 	default:
 		return ErrUnknownEventType
 	}
