@@ -25,6 +25,9 @@ type EventHandler struct {
 	onAfterAny  []EventHandleFunc
 	onError     []ErrorEventHandleFunc
 
+	// Observers
+	observers []RequestObserver
+
 	// Event handlers
 	onGitPush []GitPushEventHandleFunc
 }
@@ -67,18 +70,47 @@ func (h *EventHandler) OnError(callbacks ...ErrorEventHandleFunc) {
 // HandleEventRequest processes an incoming HTTP webhook request.
 // It validates auth, parses the payload, and dispatches to registered callbacks.
 func (h *EventHandler) HandleEventRequest(r *http.Request) error {
+	ctx := r.Context()
+
+	// Start observers
+	ends := make([]func(EventType, string, any, error), 0, len(h.observers))
+	for _, obs := range h.observers {
+		var end func(EventType, string, any, error)
+		ctx, end = obs.ObserveRequest(ctx, r)
+		ends = append(ends, end)
+	}
+	r = r.WithContext(ctx)
+
+	// Process request
+	eventType, deliveryID, event, err := h.processRequest(r)
+
+	// End observers (reverse order)
+	for i := len(ends) - 1; i >= 0; i-- {
+		ends[i](eventType, deliveryID, event, err)
+	}
+	return err
+}
+
+// processRequest contains the core auth → parse → dispatch logic.
+func (h *EventHandler) processRequest(r *http.Request) (EventType, string, any, error) {
 	if h.username != "" || h.password != "" {
 		if err := validateBasicAuth(r, h.username, h.password); err != nil {
-			return err
+			return "", "", nil, err
 		}
 	}
 
 	event, deliveryID, err := parse(r)
 	if err != nil {
-		return err
+		return "", deliveryID, nil, err
 	}
 
-	return h.dispatch(r.Context(), deliveryID, event)
+	var eventType EventType
+	switch event.(type) {
+	case *GitPushEvent:
+		eventType = EventTypeGitPush
+	}
+
+	return eventType, deliveryID, event, h.dispatch(r.Context(), deliveryID, event)
 }
 
 // dispatch routes the parsed event to the appropriate typed handler.
