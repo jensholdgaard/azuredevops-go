@@ -52,6 +52,48 @@ func TestGitPullRequestCreatedEvent_StrictDecode(t *testing.T) {
 	}
 }
 
+func TestGitPullRequestCreatedEvent_RealPayload_StrictDecode(t *testing.T) {
+	data, err := os.ReadFile("testdata/git.pullrequest.created.real.json")
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+
+	var event GitPullRequestEvent
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&event); err != nil {
+		t.Fatalf("strict decode failed: %v", err)
+	}
+
+	if event.EventType != EventTypeGitPullRequestCreated {
+		t.Errorf("eventType = %q, want %q", event.EventType, EventTypeGitPullRequestCreated)
+	}
+	if event.Resource.PullRequestID != 1 {
+		t.Errorf("pullRequestId = %d, want 1", event.Resource.PullRequestID)
+	}
+	if event.Resource.Title != "my first pull request" {
+		t.Errorf("title = %q, want %q", event.Resource.Title, "my first pull request")
+	}
+	if event.Resource.CreatedBy.DisplayName != "Jamal Hartnett" {
+		t.Errorf("createdBy.displayName = %q, want %q", event.Resource.CreatedBy.DisplayName, "Jamal Hartnett")
+	}
+	if len(event.Resource.Reviewers) != 1 {
+		t.Fatalf("reviewers count = %d, want 1", len(event.Resource.Reviewers))
+	}
+	if !event.Resource.Reviewers[0].IsContainer {
+		t.Error("expected reviewer to be a container (team)")
+	}
+	if event.Resource.Repository.Project.LastUpdateTime != "0001-01-01T00:00:00" {
+		t.Errorf("lastUpdateTime = %q, want %q", event.Resource.Repository.Project.LastUpdateTime, "0001-01-01T00:00:00")
+	}
+	if len(event.Resource.Commits) != 1 {
+		t.Fatalf("commits count = %d, want 1", len(event.Resource.Commits))
+	}
+	if event.Resource.Links["web"].Href == "" {
+		t.Error("expected _links.web.href to be set")
+	}
+}
+
 func TestGitPullRequestMergedEvent_StrictDecode(t *testing.T) {
 	data, err := os.ReadFile("testdata/git.pullrequest.merged.json")
 	if err != nil {

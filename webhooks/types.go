@@ -63,9 +63,10 @@ type Repository struct {
 
 // Project represents an Azure DevOps project.
 type Project struct {
-	ID         string `json:"id"`
-	Name       string `json:"name"`
-	URL        string `json:"url,omitempty"`
-	State      string `json:"state"`
-	Visibility string `json:"visibility,omitempty"`
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	URL            string `json:"url,omitempty"`
+	State          string `json:"state"`
+	Visibility     string `json:"visibility,omitempty"`
+	LastUpdateTime string `json:"lastUpdateTime,omitempty"`
 }
