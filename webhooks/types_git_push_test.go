@@ -135,6 +135,39 @@ func TestContract_GitPush_MinimalPayload(t *testing.T) {
 	}
 }
 
+func TestContract_GitPush_RealPayload(t *testing.T) {
+	data := loadTestdata(t, "git.push.real.json")
+
+	var event GitPushEvent
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&event); err != nil {
+		t.Fatalf("strict decode of real ADO payload failed: %v", err)
+	}
+
+	if event.EventType != EventTypeGitPush {
+		t.Errorf("eventType = %q, want %q", event.EventType, EventTypeGitPush)
+	}
+	if event.Resource.Repository.Name != "Fabrikam-Fiber-Git" {
+		t.Errorf("repository.name = %q, want %q", event.Resource.Repository.Name, "Fabrikam-Fiber-Git")
+	}
+	if event.Resource.Repository.Project.LastUpdateTime != "0001-01-01T00:00:00" {
+		t.Errorf("lastUpdateTime = %q, want %q", event.Resource.Repository.Project.LastUpdateTime, "0001-01-01T00:00:00")
+	}
+	if event.Resource.PushedBy.DisplayName != "Jamal Hartnett" {
+		t.Errorf("pushedBy.displayName = %q, want %q", event.Resource.PushedBy.DisplayName, "Jamal Hartnett")
+	}
+	if len(event.Resource.Commits) != 1 {
+		t.Fatalf("commits count = %d, want 1", len(event.Resource.Commits))
+	}
+	if event.Resource.Commits[0].Comment != "Fixed bug in web.config file" {
+		t.Errorf("commit comment = %q, want %q", event.Resource.Commits[0].Comment, "Fixed bug in web.config file")
+	}
+	if event.Resource.PushID != 14 {
+		t.Errorf("pushId = %d, want 14", event.Resource.PushID)
+	}
+}
+
 func TestContract_GitPush_TypedDecode(t *testing.T) {
 	data := loadTestdata(t, "git.push.json")
 
