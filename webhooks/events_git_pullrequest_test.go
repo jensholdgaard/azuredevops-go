@@ -70,6 +70,31 @@ func TestDispatchGitPullRequestMerged(t *testing.T) {
 	}
 }
 
+func TestDispatchGitPullRequestUpdated(t *testing.T) {
+	data, err := os.ReadFile("testdata/git.pullrequest.updated.json")
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+
+	handler := New()
+	var gotEventType EventType
+	handler.OnGitPullRequest(func(_ context.Context, _ string, eventType EventType, event *GitPullRequestEvent) error {
+		gotEventType = eventType
+		if event.Resource.Status != "active" {
+			t.Errorf("status = %q, want %q", event.Resource.Status, "active")
+		}
+		return nil
+	})
+
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, "/webhook", strings.NewReader(string(data)))
+	if err := handler.HandleEventRequest(req); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if gotEventType != EventTypeGitPullRequestUpdated {
+		t.Errorf("eventType = %q, want %q", gotEventType, EventTypeGitPullRequestUpdated)
+	}
+}
+
 func TestSetOnGitPullRequest_Replaces(t *testing.T) {
 	data, err := os.ReadFile("testdata/git.pullrequest.created.json")
 	if err != nil {

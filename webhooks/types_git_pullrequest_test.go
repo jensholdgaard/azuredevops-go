@@ -94,6 +94,30 @@ func TestGitPullRequestCreatedEvent_RealPayload_StrictDecode(t *testing.T) {
 	}
 }
 
+func TestGitPullRequestUpdatedEvent_StrictDecode(t *testing.T) {
+	data, err := os.ReadFile("testdata/git.pullrequest.updated.json")
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+
+	var event GitPullRequestEvent
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&event); err != nil {
+		t.Fatalf("strict decode failed: %v", err)
+	}
+
+	if event.EventType != EventTypeGitPullRequestUpdated {
+		t.Errorf("eventType = %q, want %q", event.EventType, EventTypeGitPullRequestUpdated)
+	}
+	if event.Resource.PullRequestID != 1 {
+		t.Errorf("pullRequestId = %d, want 1", event.Resource.PullRequestID)
+	}
+	if event.Resource.Status != "active" {
+		t.Errorf("status = %q, want %q", event.Resource.Status, "active")
+	}
+}
+
 func TestGitPullRequestMergedEvent_StrictDecode(t *testing.T) {
 	data, err := os.ReadFile("testdata/git.pullrequest.merged.json")
 	if err != nil {
