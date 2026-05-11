@@ -59,6 +59,14 @@ func decodeTyped(eventType EventType, body []byte) (any, error) {
 			return nil, fmt.Errorf("%w: %v", ErrParsingPayload, err)
 		}
 		return &event, nil
+	case EventTypeGitPullRequestCreated, EventTypeGitPullRequestUpdated, EventTypeGitPullRequestMerged:
+		var event GitPullRequestEvent
+		dec := json.NewDecoder(bytes.NewReader(body))
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(&event); err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrParsingPayload, err)
+		}
+		return &event, nil
 	default:
 		return nil, fmt.Errorf("%w: %s", ErrUnknownEventType, eventType)
 	}

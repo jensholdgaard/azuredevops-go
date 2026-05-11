@@ -6,6 +6,15 @@ type EventType string
 const (
 	// EventTypeGitPush is fired when commits are pushed to a repository.
 	EventTypeGitPush EventType = "git.push"
+
+	// EventTypeGitPullRequestCreated is fired when a pull request is created.
+	EventTypeGitPullRequestCreated EventType = "git.pullrequest.created"
+
+	// EventTypeGitPullRequestUpdated is fired when a pull request is updated.
+	EventTypeGitPullRequestUpdated EventType = "git.pullrequest.updated"
+
+	// EventTypeGitPullRequestMerged is fired when a pull request merge commit is created.
+	EventTypeGitPullRequestMerged EventType = "git.pullrequest.merged"
 )
 
 // baseEvent is used internally to peek at eventType before full deserialization.
@@ -54,9 +63,10 @@ type Repository struct {
 
 // Project represents an Azure DevOps project.
 type Project struct {
-	ID         string `json:"id"`
-	Name       string `json:"name"`
-	URL        string `json:"url,omitempty"`
-	State      string `json:"state"`
-	Visibility string `json:"visibility,omitempty"`
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	URL            string `json:"url,omitempty"`
+	State          string `json:"state"`
+	Visibility     string `json:"visibility,omitempty"`
+	LastUpdateTime string `json:"lastUpdateTime,omitempty"`
 }
